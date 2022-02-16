@@ -8,35 +8,47 @@ package hw11and12v1;
     Предусмотрите возможность ежесекундного оповещения потока, воспроизводящего сообщение, потоком, отсчитывающим время.
  */
 
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import static java.util.concurrent.TimeUnit.SECONDS;
 
 public class Task1 {
-    private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(2); // потоки
-
-    public void beepForAnHour() {
-        long start = System.currentTimeMillis(); // время старта запуска программы
-
-        final Runnable passedIn1Second = new Runnable() {
-            public void run() {
-                System.out.println(System.currentTimeMillis() - start); // сколько прошло времени от старта программы
-                //System.out.println("Прошла 1 секунда");
-            }
-        };
-
-        final Runnable fiveSecondsHavePassed = new Runnable() {
-            public void run() {
+    public static void main(String[] args) {
+        Thread fiveSeconds = new Thread(() -> { // поток оповещающий каждые5 секунд
+            while (true) { // бесконечный цикл
+                synchronized (Thread.currentThread()) { // синхронизированный блок для майн
+                    try {
+                        Thread.currentThread().wait(); // остановка потока
+                    } catch (InterruptedException e) {
+                        e.printStackTrace(); // исключение
+                    }
+                }
                 System.out.println("Прошло 5 секунд");
             }
-        };
+        });
+        fiveSeconds.start(); // запустили поток
 
-        scheduler.scheduleAtFixedRate(passedIn1Second, 1, 1, SECONDS); // 1`й поток
-        scheduler.scheduleAtFixedRate(fiveSecondsHavePassed, 5, 5, SECONDS); // 2`й поток
 
-    }
+        Thread oneSecond = new Thread(() -> { // поток оповещающий каждую секунду
+            int count = 0; // счетчик
+            long starts = System.currentTimeMillis(); // время старта запуска программы
 
-    public static void main(String[] args) {
-        new Task1().beepForAnHour();
+            while (true) { // бесконечный цикл
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+
+                System.out.println(System.currentTimeMillis() - starts); // в консоль, сколько прошло от запуска миллисекунд
+                //System.out.println("Прошла 1 секунда");
+                count++; // повысить счетчик
+
+                if (count == 5) { // если счетчик насчитал 5 секунд
+                    count = 0; // сбросить счетчик
+                    synchronized (fiveSeconds) {
+                        fiveSeconds.notify();
+                    }
+                }
+            }
+        });
+        oneSecond.start(); // запустили поток
     }
 }
